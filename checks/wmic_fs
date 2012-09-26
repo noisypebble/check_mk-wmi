@@ -1,0 +1,30 @@
+wmic_fs_default_values = (90,95)
+
+def inventory_wmic_fs(info):
+	inventory=[]
+	for line in info:
+		disk = line[0]
+		inventory.append( (disk, "", "wmic_fs_default_values") )
+	return inventory
+
+def check_wmic_fs(item, params, info):
+	warn, crit = params
+	for line in info:
+		if line[0] == item:
+			free = float(line[2]) / 1024 / 1024 / 1024
+			total = float(line[3]) / 1024 / 1024 / 1024
+			used = total - free
+			percent_used = (used * 100) / total
+			message = "%.1f%% used" % percent_used
+			if percent_used >= crit:
+				return (2, "CRITICAL - %s" % message)
+			elif percent_used >= warn:
+				return (1, "WARNING - %s" % message)
+			elif percent_used < warn:
+				return (0, "OK - %s" % message)
+			else:
+				return (3, "UNKNOWN - Unable to get filesystem data")
+ 
+	return (3, "UNKNOWN - Unable to get filesystem data")
+
+check_info['wmic_fs'] = (check_wmic_fs, "fs_%s", 0, inventory_wmic_fs)

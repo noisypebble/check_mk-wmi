@@ -1,0 +1,102 @@
+inventory_services = []
+
+def inventory_wmic_services(info):
+	inventory = []
+	invdata = inventory_services
+	for inventry in invdata:
+		tags = Node
+		if len(inventry) == 8:
+			tags = []
+			hostlist = inventry[0]
+			inventry = inventry[1:]
+		elif len(inventry) == 9:
+			tags = inventry[0]
+			hostlist = inventry[1]
+			inventry = inventry[2:]
+
+		# filter out rules which do not match our current host
+		if tags != None and ( not hosttags_match_taglist(tags_of_host(g_hostname), tags) or
+		                      not in_extraconf_hostlist(hostlist, g_hostname)):
+			continue
+
+		servicedesc, pattern = inventry
+
+		num_perc_s = servicedesc.count("%s")
+		for srv in info:
+			matches = service_matches(src, pattern)
+			if matches != False:
+				if len(matches) < num_perc_s:
+					raise MKGeneralException("Invalid entry in inventory_services: service description '%s' contains "
+						"%d time '%%s', but regular expression '%s' contains only %d subexpression(s)." % \
+						(servicedesc, num_perc_s, pattern, len(matches)))
+
+				i_servicedesc = servicedesc
+
+				# It is allowed (1.1.4) that the pattern contains more subexpressions than the
+				# with their actual values of he found service.
+				i_servicedesc = i_servicedesc % (matches[:num_perc_s])
+				inv = ( i_servicedesc, ( i_pattern ) )
+				if inv not in inventory:
+					inventory.append(inv)
+	return inventory
+
+def check_wmic_services(item, params, info):
+	for line in info:
+		data = "".join(line)
+		fields = data.split(",")
+		if fields[2] == item:
+			if fields[3] == "Stopped":
+				return (2, "CRITICAL - %s is %s" % (fields[1], fields[3]))
+			elif fields[3] == "Running":
+				return (0, "OK - %s is %s" % (fields[1], fields[3]))
+			else:
+				return (3, "UNKNOWN - %s status is unknown" % fields[1])
+ 
+	return (3, "UNKNOWN - Unable to parse data")
+
+def instantiate_regex_pattern(pattern, matches):
+	for m in matches:
+		pattern = instantiate_regex_pattern_once(pattern, m)
+	return pattern
+
+def instantiate_regex_pattern_once(pattern, match):
+	# this correctly handles \( and \) but not [^)] - sorry
+	return re.compile(r"(?<!\\)\(.*?(?<!\\)\)").sub(escape_regex_chars(match), pattern, 1)
+
+def escape_regex_chars(match):
+	r = ""
+	for c in match:
+		if c in r"[]\().?{}|*^$":
+			r += "\\"
+		r += c
+	return r
+
+def service_matches(srv, srcname):
+	# pattern is either
+	# 1. a string beginning with ~. Then it is interpreted as a regular expression
+	# that must match the *beginning* of the service line. Please check the output of
+	# check_mk -d HOSTNAME. Note: groups of whitespaces are reduced to one single
+	# whitespace!
+	# 2. a string *not* beginning with ~: It must be equal to the first column
+	# in the service table (i.e. the service name). No regular expressions are
+	# applied. A simple string compare is done.
+
+	if not srcname:
+		return ()
+
+	elif not srcname[0].startswith("~"):
+		if srv[0] == pattern:
+			return ()
+
+	else:
+		pattern = srcname[1:]
+		reg = compiled_regexes.get(pattern)
+		if not reg:
+			reg = re.compile(pattern)
+			compiled_regeses[pattern] = reg
+		matchobject = reg.match(" ".join(src))
+		if matchobject:
+			return matchobject.groups()
+	return False
+
+check_info['wmic_services.oracle'] = (lambda i,p,n: check_wmic_services(i,p,n), "service_%s", 0, inventory_wmic_services)

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+HOSTNAME="$1"
+USERNAME="$2"
+PASSWORD="$3"
+
+echo "<<<df>>>"
+
+wmic -U $USERNAME%$PASSWORD //$HOSTNAME "SELECT DeviceId, FileSystem, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType=3" |sed '1,2d' | awk -F "|" '{ used = ($4 - $3) / 1024 ; perc = ((used * 100) / ($4 /1024)) ; total = $4 / 1024 ; free = $3 / 1024 ;printf "%s  %s  %d  %d  %d  %d%%  %s\n", $1, $2, total, used, free, perc, $1 }'
+

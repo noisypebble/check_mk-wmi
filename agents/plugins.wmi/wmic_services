@@ -1,0 +1,10 @@
+#!/bin/sh
+
+HOSTNAME="$1"
+USERNAME="$2"
+PASSWORD="$3"
+
+echo "<<<services>>>"
+
+wmic -U $USERNAME%$PASSWORD //$HOSTNAME "SELECT Name,DisplayName,State,StartMode FROM Win32_Service" |sed '1,2d' | awk -F '|' '{ gsub(/ /,"_", $2); print $2" "tolower($4)"/"tolower($3)" "$1 }'
+

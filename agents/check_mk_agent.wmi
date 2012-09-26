@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# This is a Windows Check_MK agent that can be used in place of the one that 
+# ships with check_mk. It uses the wmic binary to query WMI on Microsoft 
+# Windows.
+#
+# Copyright:	(c) Toya Technologies 2012
+# Author:	Dusty Little dlittle@toyatech.net
+# Version:	0.2
+# Revisions:
+#   0.1   01-20-2012	Inital release
+#   0.2   09-26-2012    Updated for public release
+
+# Remove locale settings to eliminate localized outputs where possible
+export LC_ALL=C
+unset LANG
+
+export MK_LIBDIR="/usr/share/check_mk/agents"
+export MK_CONFDIR="/etc/check_mk/agents"
+
+# Make sure, locally installed binaries are found
+PATH=$PATH:/usr/local/bin
+
+# All executables in PLUGINDIR will simply be executed and their
+# output appended to the output of the agent. Plugins define their own
+# sections and must output headers with '<<<' and '>>>'
+PLUGINSDIR=$MK_LIBDIR/plugins.wmi
+
+# All executables in LOCALDIR will be executed and their
+# output inserted into the section <<<local>>>. Please
+# refer to online documentation for details about local checks.
+LOCALDIR=$MK_LIBDIR/local
+
+# close standard input (for security reasons) and stderr
+if [ "$1" = -d ]
+then
+	set -xv
+else
+	exec <&- 2>/dev/null
+fi
+
+# print check_mk header
+echo '<<<check_mk>>>'
+echo Version: 0.2
+echo AgentOS: wmi
+echo PluginsDirectory: $PLUGINSDIR
+echo LocalDirectory: $LOCALDIR
+echo AgentDirectory: $MK_CONFDIR
+
+# If we are called via xinetd, try to find only_from configuartion
+if [ -n "$REMOTE_HOST" ]
+then
+	echo -n 'OnlyForm: '
+	echo $(sed -n '/^service[[:space:]]*check_mk/,/}/s/^[[:space:]]*only_from[[:space:]*=[[:space:]]*\(.*\)/\1/p' /etc/xinetd.d/* | head -n1)
+fi
+
+# Integrating local plugins that output a separate section
+if cd $PLUGINSDIR
+then
+	for script in $(ls)
+	do
+		if [ -x "$script" ]; then
+			./$script "$1" "$2" "$3"
+		fi
+	done
+fi
+
+# Integrating local checks
+echo '<<<local>>>'
+if cd $LOCALDIR
+then
+	for script in $(ls)
+	do
+		if [ -x "$script"]; then
+			./$script
+		fi
+	done
+fi
+
+
