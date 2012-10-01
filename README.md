@@ -14,7 +14,7 @@ A config might look like this:
     ]
 
     datasource_programs = [
-      ( "/usr/share/check_mk/agents/check_mk-agent.wmi &lt;HOST&gt; domain.com\\\\username password", [ 'wmi' ], ALL_HOSTS ),
+      ( "/usr/share/check_mk/agents/check_mk-agent.wmi <HOST> domain.com\\\\username password", [ 'wmi' ], ALL_HOSTS ),
     ]
 
 *Notice that the "\" between the domain and the username must be escaped twice.
