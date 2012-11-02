@@ -17,7 +17,15 @@ A config might look like this:
       ( "/usr/share/check_mk/agents/check_mk-agent.wmi <HOST> domain.com\\\\username password", [ 'wmi' ], ALL_HOSTS ),
     ]
 
+    inventory_services = [
+      "~OracleService running",
+    ]
+
 *Notice that the "\" between the domain and the username must be escaped twice.
+*Both plugins are written to the same output spec as the existing df and services checks. This means that all configuration options for these checks are identical to the ones distributed with check_mk. You can read more about the options available for the df check here:
+http://mathias-kettner.de/checkmk_check_df.html
+and the services check here:
+http://mathias-kettner.de/checkmk_check_services.html  
 
 If you have any questions please email me at dlittle@toyatech.net.
 
